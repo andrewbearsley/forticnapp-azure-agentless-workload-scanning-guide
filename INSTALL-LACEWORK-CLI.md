@@ -70,7 +70,6 @@ Configure the CLI using the JSON file with your API credentials:
 lacework configure -j /path/to/your-credentials.json
 ```
 
-
 ### Verify Configuration
 
 ```bash

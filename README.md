@@ -12,7 +12,7 @@ This guide covers prerequisites, deployment steps, architecture details, and con
 
 Run the Azure Agentless Workload Scanner Preflight Check tool to verify your Azure environment is properly configured.
 
-**Option 1: Local machine (macOS)**
+**Option 1 - Local machine (macOS):**
 ```bash
 # Clone and run the preflight check tool
 git clone https://github.com/lacework/terraform-azure-agentless-scanning.git
@@ -20,7 +20,7 @@ cd terraform-azure-agentless-scanning/preflight_check
 # Follow instructions in the preflight check repository
 ```
 
-**Option 2: Azure Cloud Shell**
+**Option 2 - Azure Cloud Shell:**
 The preflight check can be run from Azure Cloud Shell.
 
 1. Open Azure Cloud Shell from the Azure portal
@@ -94,7 +94,7 @@ terraform apply
 
 In the Lacework FortiCNAPP console, navigate to **Settings > Integrations > Cloud accounts**. The status of the integration displays as **Success** if all resources are installed correctly.
 
-Reference: 
+Reference:
 - [lacework generate cloud-account azure](https://docs.fortinet.com/document/forticnapp/latest/cli-reference/635459/lacework-generate-cloud-account-azure)
 - [Deploying agentless workload scanning on Azure](https://docs.fortinet.com/document/forticnapp/latest/administration-guide/42109/deploying-agentless-workload-scanning-on-azure)
 
