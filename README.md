@@ -21,7 +21,6 @@ cd terraform-azure-agentless-scanning/preflight_check
 ```
 
 **Option 2 - Azure Cloud Shell:**
-The preflight check can be run from Azure Cloud Shell.
 
 1. Open Azure Cloud Shell from the Azure portal
 2. Select **Bash** (not PowerShell)
