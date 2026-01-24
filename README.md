@@ -38,7 +38,7 @@ Reference: [Azure Agentless Workload Scanner Preflight Check](https://github.com
 Install and configure the required tools:
 
 1. **Lacework CLI**: [Install and Configure Lacework CLI](INSTALL-LACEWORK-CLI.md)
-2. **Terraform**: [Install Terraform](INSTALL-TERRAFORM.md) (version 1.9 or later required)
+2. **Terraform**: [Install Terraform](INSTALL-TERRAFORM.md)
 3. **Azure CLI**: [Install and Configure Azure CLI](INSTALL-AZURE-CLI.md)
 
 ### Step 3: Gather Information

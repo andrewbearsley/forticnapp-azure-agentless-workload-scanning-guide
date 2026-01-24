@@ -1,7 +1,5 @@
 # Installing Terraform
 
-Terraform 1.9 or later is required for Azure agentless workload scanning deployment.
-
 ## Installation
 
 ### macOS
