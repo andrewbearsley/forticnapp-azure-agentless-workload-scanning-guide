@@ -133,13 +133,15 @@ Reference:
 
 **Global Resources (deployed once per integration):**
 - Azure AD Application and Service Principal for authentication and authorization
-- Role Assignments: service principal assigned necessary roles (e.g., Reader, Key Vault Reader) at subscription or management group level
 - Resource Group: dedicated resource group for scanning resources
+- Key Vault: stores secrets and credentials used by the orchestrator
+- Storage Account and Blob Container: stores scan data
+- Role Assignments: service principal and managed identity assigned necessary roles at subscription or management group level
+- Custom Role Definitions: scoped roles for snapshot management (monitored subscriptions) and scanning operations (scanning subscription)
 
 **Regional Resources (deployed per region via separate Terraform module instances):**
 - Container App Environment: hosts the orchestrator Container App Job
 - Container App Job: scheduled orchestrator that runs hourly, enumerates VMs, and manages ephemeral scanning VMs
-- Storage Account: stores scan data
 - Virtual Network and Subnet: network connectivity for scanning resources
 - Network Security Groups: controls network traffic
 - Log Analytics Workspace: logging for Container App Environment
@@ -158,7 +160,7 @@ Reference:
 #### Optional Inputs
 
 - **Custom VNet**: Use an existing virtual network and subnet instead of creating new ones
-- **NAT Gateway**: Configure a NAT gateway to avoid provisioning a large number of public IPs. Recommended for scanning more than 1000 workloads per region to reduce costs
+- **NAT Gateway**: Enabled by default. Can be disabled with `use_nat_gateway = false`, in which case each scanning VM gets its own public IP
 - **Other options**: See [Optional Inputs](https://registry.terraform.io/modules/lacework/agentless-scanning/azure/latest) in the Terraform module documentation
 
 ### IAM Permissions
@@ -186,21 +188,16 @@ Reference: https://docs.fortinet.com/document/forticnapp/latest/administration-g
 
 #### Permissions Used During Workload Scanning
 
-The scanning process uses a Service Principal with the following Azure RBAC roles:
+The scanning process uses two identities with distinct roles:
 
-**Service Principal Roles:**
-- Reader Role: read-only access to Azure resources for enumerating and monitoring resources
-- Storage Blob Data Reader Role: read access to Azure Blob Storage for accessing VM disk images stored as VHD files
+**Service Principal (data_loader) - used by Lacework to retrieve scan results:**
+- Storage Blob Data Reader: read access to the Storage Account where scan results are stored
 
-**Role Assignment Scope:**
-- Roles are assigned at subscription or management group level
-- Service Principal is created during Terraform deployment
-
-**Additional Permissions:**
-- `Microsoft.Compute/virtualMachines/read`: read virtual machine configurations
-- `Microsoft.Storage/storageAccounts/listKeys/action`: access storage account keys for data retrieval
-- `Microsoft.Resources/subscriptions/resourceGroups/read`: read resource group information
-- `Microsoft.Network/networkInterfaces/read`: access network interface details
+**Managed Identity (sidekick) - used by the orchestrator and scanning VMs:**
+- Storage Blob Data Contributor: read/write access to the Storage Account
+- Key Vault Contributor: access to secrets and credentials in Key Vault
+- Custom snapshot role (monitored subscriptions): `Microsoft.Compute/disks/read`, `Microsoft.Compute/virtualMachines/read`, `Microsoft.Compute/snapshots/*`, `Microsoft.Resources/subscriptions/resourceGroups/read`
+- Custom scanner role (scanning subscription): VM management, disk operations, network interface configuration, storage account key access, managed identity assignment
 
 Reference: https://docs.fortinet.com/document/forticnapp/latest/administration-guide/991151/preparing-for-integration
 
