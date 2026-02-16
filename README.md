@@ -144,7 +144,7 @@ Reference:
 - Network Security Groups: controls network traffic
 - Log Analytics Workspace: logging for Container App Environment
 - Managed Identity: enables Container App Jobs to access Azure resources
-- NAT Gateway and Public IP (optional): recommended when scanning 1000+ workloads per region
+- NAT Gateway and Public IP: enabled by default; routes outbound traffic from scanning VMs through a single static IP instead of assigning a public IP to each scanning VM
 
 **Ephemeral Resources (created and destroyed each scan cycle, not managed by Terraform):**
 - Scanning VMs: temporary VMs created by the orchestrator to mount and scan cloned disks
