@@ -100,22 +100,25 @@ Reference:
 ## How It Works
 
 ### Azure Process
-1. Container App jobs are scheduled to check for scanning requirements
-2. Jobs enumerate monitored subscriptions and identify VMs that need scanning
-3. Azure APIs clone VM disks
-4. Virtual Machines are launched to mount and scan the cloned disks
-5. Cloned disks are analyzed for vulnerabilities within the Azure subscription, then deleted after scanning
-6. Scan results (metadata) are stored in Storage Account within the Azure subscription
+1. A Container App Job runs on an hourly schedule (cron) to orchestrate scanning
+2. The orchestrator enumerates monitored subscriptions and identifies VMs that need scanning
+3. VM disks are cloned (snapshotted) within the same region
+4. Temporary scanning VMs are created to mount and scan the cloned disks
+5. Cloned disks are analyzed for vulnerabilities, then the temporary VMs and cloned disks are deleted after scanning completes
+6. Scan results (metadata) are stored in a Storage Account within the scanning subscription
 7. Lacework retrieves scan results via Service Principal with read-only Storage Account access
-8. Container App jobs require outbound internet connectivity to Lacework APIs for configuration updates, diagnostic reporting, and on-demand scan requests
+8. Container App Jobs require outbound internet connectivity to Lacework APIs for configuration updates, diagnostic reporting, and on-demand scan requests
+
+**Note:** The scanning VMs are ephemeral - they are created on-demand by the orchestrator each scan cycle and destroyed after scanning completes. They are not provisioned by Terraform and do not run permanently. The only persistent scanning infrastructure is the Container App Environment and its scheduled Container App Job.
 
 
 ## Deployment Details
 
 ### Architecture
-- Uses Container App Jobs for scheduled scanning tasks
-- Uses Virtual Machines to mount and scan cloned disks
-- Disk cloning: Azure clones VM disks for scanning
+- A scheduled Container App Job acts as the orchestrator, running hourly to identify VMs that need scanning
+- The orchestrator creates ephemeral VMs to mount and scan cloned disks; these temporary VMs are destroyed after each scan cycle
+- Disk cloning occurs within the same region as the target VM (region-local)
+- Scanning infrastructure is deployed per-region - each region where you have VMs to scan needs its own set of regional resources
 
 ### Terraform Module
 - Terraform module: https://registry.terraform.io/modules/lacework/agentless-scanning/azure/latest
@@ -133,14 +136,19 @@ Reference:
 - Role Assignments: service principal assigned necessary roles (e.g., Reader, Key Vault Reader) at subscription or management group level
 - Resource Group: dedicated resource group for scanning resources
 
-**Regional Resources (deployed per region):**
-- Container App Environment: hosts Container App jobs
-- Container App Jobs: scheduled scanning tasks
-- Virtual Machines: mount and scan cloned disks
-- Storage Account: stores snapshots and scan data
+**Regional Resources (deployed per region via separate Terraform module instances):**
+- Container App Environment: hosts the orchestrator Container App Job
+- Container App Job: scheduled orchestrator that runs hourly, enumerates VMs, and manages ephemeral scanning VMs
+- Storage Account: stores scan data
 - Virtual Network and Subnet: network connectivity for scanning resources
 - Network Security Groups: controls network traffic
-- Managed Identity: enables Container App jobs to access Azure resources
+- Log Analytics Workspace: logging for Container App Environment
+- Managed Identity: enables Container App Jobs to access Azure resources
+- NAT Gateway and Public IP (optional): recommended when scanning 1000+ workloads per region
+
+**Ephemeral Resources (created and destroyed each scan cycle, not managed by Terraform):**
+- Scanning VMs: temporary VMs created by the orchestrator to mount and scan cloned disks
+- Cloned disks: snapshots of target VM disks, deleted after scanning completes
 
 #### Deployment Scenarios
 
