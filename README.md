@@ -25,14 +25,46 @@ This guide is scoped to the agentless deployment only. For the broader Azure int
 
 Run the Azure Agentless Workload Scanner Preflight Check to verify the scanning subscription has the required resource providers registered, sufficient quota for ephemeral scanning VMs, and the regions you plan to scan are available.
 
-Run from <a href="https://portal.azure.com/#cloudshell/" target="_blank">Azure Cloud Shell</a> (Bash, not PowerShell):
+Run from <a href="https://portal.azure.com/#cloudshell/" target="_blank">Azure Cloud Shell</a> (Bash, not PowerShell). Cloud Shell is the easiest path because it ships with Azure CLI authenticated as your portal user and Python preinstalled, so the only extra dependency to install is `uv` (the package manager the preflight tool uses).
+
+#### Which subscription to run from
+
+The preflight tool uses Azure SDK token-based auth, so the active `az` subscription doesn't determine what the tool can see. It enumerates VMs in every subscription you pass via `--monitored-subscriptions` (or every subscription in the tenant if omitted) and checks quotas in the subscription you pass via `--scanning-subscription`. Your portal identity needs Reader (or higher) on all of them.
+
+In practice, set the active subscription to the **scanning subscription** before running the check. This way the same shell session is already pointed at the right subscription when you move on to `terraform apply`:
 
 ```bash
-git clone https://github.com/lacework/terraform-azure-agentless-scanning.git
-cd terraform-azure-agentless-scanning/preflight_check
+az account set --subscription <scanning-subscription-id>
+az account show --query "{name:name, id:id, tenant:tenantId}" -o table
 ```
 
-Follow the instructions in the preflight check repository. Cloud Shell is the easiest path because it ships with Azure CLI authenticated as your portal user, jq, and the right Python runtime preinstalled.
+#### Install and run
+
+```bash
+# Install uv (one-liner from Astral; user-space, no sudo needed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+
+# Clone and run the preflight check
+git clone https://github.com/lacework/terraform-azure-agentless-scanning.git
+cd terraform-azure-agentless-scanning/preflight_check
+uv run -m preflight_check
+```
+
+Interactive mode prompts for the scanning subscription, monitored subscriptions, regions, and NAT Gateway preference. Non-interactive equivalent:
+
+```bash
+uv run -m preflight_check \
+  --scanning-subscription <scanning-subscription-id> \
+  --monitored-subscriptions <monitored-sub-ids-comma-separated> \
+  --regions <region-list> \
+  --nat-gateway \
+  --output-path ./preflight_report.json
+```
+
+The check writes a JSON report and prints a summary covering vCPU quotas (based on expected scanning VM count) and public IP quotas if `--no-nat-gateway` is used.
+
+If you're using an ephemeral Cloud Shell session (no storage account mounted), `uv` will need to be reinstalled each session because `/home` is not persisted. With a mounted storage account, `~/.local/bin/uv` survives between sessions.
 
 Reference: <a href="https://github.com/lacework/terraform-azure-agentless-scanning/tree/main/preflight_check" target="_blank">Azure Agentless Workload Scanner Preflight Check</a>
 
