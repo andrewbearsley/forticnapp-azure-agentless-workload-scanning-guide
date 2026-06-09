@@ -29,14 +29,15 @@ Run from <a href="https://portal.azure.com/#cloudshell/" target="_blank">Azure C
 
 #### Which subscription to run from
 
-The preflight tool uses Azure SDK token-based auth, so the active `az` subscription doesn't determine what the tool can see. It enumerates VMs in every subscription you pass via `--monitored-subscriptions` (or every subscription in the tenant if omitted) and checks quotas in the subscription you pass via `--scanning-subscription`. Your portal identity needs Reader (or higher) on all of them.
+The active `az` subscription doesn't gate what the preflight tool sees. The tool uses Azure SDK token-based auth and works against whatever IDs you pass via flags (`--scanning-subscription`, `--monitored-subscriptions`) or supply at the interactive prompts. Your Cloud Shell portal identity needs Reader (or higher) on the scanning subscription and on every monitored subscription you want it to enumerate.
 
-In practice, set the active subscription to the **scanning subscription** before running the check. This way the same shell session is already pointed at the right subscription when you move on to `terraform apply`:
+Confirm which tenant Cloud Shell is bound to before running, so you don't accidentally check a different tenant:
 
 ```bash
-az account set --subscription <scanning-subscription-id>
-az account show --query "{name:name, id:id, tenant:tenantId}" -o table
+az account show --query "{tenant:tenantId, user:user.name}" -o table
 ```
+
+If you have access to multiple tenants and need to switch, run `az login --tenant <tenant_id>` from Cloud Shell first.
 
 #### Install and run
 
