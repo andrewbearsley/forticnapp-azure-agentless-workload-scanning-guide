@@ -157,6 +157,8 @@ Flags:
 
 Drop `--noninteractive` to walk through prompts instead. Terraform files land in `~/lacework/azure` by default (override with `--output`).
 
+**Heads-up for single-region generate output.** The CLI emits `global = false` on the (only) module block for single-region deployments. With the upstream `lacework/agentless-scanning/azure` module 1.6.x this is broken: `terraform plan` errors at `azurerm_user_assigned_identity.sidekick is empty tuple` because the global resources are skipped but the locals still try to read them. Open `main.tf` and change `global = false` to `global = true` before running `terraform plan`. The committed variants in Option 1 already have this fix applied. Multi-region output is fine as-is: the first region is implicitly the global owner, additional regions pass `global_module_reference` to it. See <a href="#troubleshooting">Troubleshooting</a> for the full symptom and fix.
+
 Reference: <a href="https://docs.fortinet.com/document/forticnapp/latest/cli-reference/635459/lacework-generate-cloud-account-azure" target="_blank">lacework generate cloud-account azure</a>
 
 ### Step 6: Authenticate with Azure CLI
@@ -356,7 +358,26 @@ Reference: <a href="https://docs.fortinet.com/document/forticnapp/latest/adminis
 
 ## Troubleshooting
 
-Two friction patterns hit common in enterprise environments. Both are caused by the agentless module creating a Storage Account with a randomised suffix and then calling the queue data plane during the apply itself. Both have clean, non-destructive fixes.
+Three friction patterns are worth flagging up front. The first hits at `terraform plan` and only affects `lacework generate` output for single-region deployments. The other two hit at `terraform apply` during data-plane queue creation and are caused by the agentless module creating a Storage Account with a randomised suffix and then calling the queue data plane during the apply itself. All three have clean, non-destructive fixes.
+
+### Plan fails with `sidekick is empty tuple`
+
+`terraform plan` errors at:
+
+```
+Error: Invalid index
+  on .terraform/modules/lacework_agentless_scanning/main.tf line 138, in locals:
+ 138:   sidekick_principal_id = length(var.global_module_reference.sidekick_principal_id) > 0 ? var.global_module_reference.sidekick_principal_id : azurerm_user_assigned_identity.sidekick[0].principal_id
+    │ azurerm_user_assigned_identity.sidekick is empty tuple
+```
+
+**Cause**: the module block has `global = false` but no `global_module_reference`. In `lacework/agentless-scanning/azure` 1.6.x, the global resources (Key Vault, Storage Account, managed identity, custom roles) are gated by `count = var.global ? 1 : 0`. With `global = false` and no reference to another module instance, the resources are skipped, but the locals still try to read `sidekick[0]` and fail.
+
+**When this bites**: the `lacework generate cloud-account azure --agentless` CLI emits `global = false` even for single-region output. The committed variants in Option 1 of Step 5 already have this corrected.
+
+**Fix**: open `main.tf` and change `global = false` to `global = true` on the single module block (or on the first module block if you have multiple regions). Re-run `terraform plan`. The first module is the implicit "global owner" that creates the shared resources; subsequent regional modules pass `global_module_reference = module.<first>` and keep `global = false`.
+
+No state surgery needed because plan failed before any resources were created.
 
 ### Apply fails with 403 on `azurerm_storage_queue` create
 
